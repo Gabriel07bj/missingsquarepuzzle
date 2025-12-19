@@ -1,13 +1,37 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PIECES, GRID_SIZE } from './constants';
 import { HintMode } from './types';
 import PuzzlePiece from './components/PuzzlePiece';
 import ExplanationModal from './components/ExplanationModal';
 
+// Redundant aistudio declaration removed to avoid conflict with the environment's built-in AIStudio type definition.
+
 const App: React.FC = () => {
   const [hintMode, setHintMode] = useState<HintMode>(HintMode.NONE);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [hasKey, setHasKey] = useState<boolean>(true); // Default true, will check on mount
+
+  useEffect(() => {
+    const checkKey = async () => {
+      // @ts-ignore - aistudio is provided by the environment
+      if (window.aistudio) {
+        // @ts-ignore
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasKey(selected);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleSelectKey = async () => {
+    // @ts-ignore - aistudio is provided by the environment
+    if (window.aistudio) {
+      // @ts-ignore
+      await window.aistudio.openSelectKey();
+      setHasKey(true); // Assume success after triggering as per guidelines
+    }
+  };
 
   const handleReset = () => {
     window.dispatchEvent(new CustomEvent('reset-pieces'));
@@ -37,6 +61,20 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex gap-3">
+          {/* API Key Selection Button */}
+          <button 
+            onClick={handleSelectKey}
+            title="Select API Key (Required for some advanced features)"
+            className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 border ${
+              !hasKey ? 'bg-rose-50 border-rose-200 text-rose-600 animate-pulse' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+            {hasKey ? 'API Key' : 'Select Key'}
+          </button>
+
           <button 
             onClick={handleReset}
             className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-semibold transition-all flex items-center gap-2"
@@ -44,6 +82,7 @@ const App: React.FC = () => {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             Reset
           </button>
+          
           <button 
             onClick={cycleHint}
             className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 shadow-sm ${
@@ -53,6 +92,7 @@ const App: React.FC = () => {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             {hintMode === HintMode.NONE ? 'Show Hint' : hintMode === HintMode.SOLID ? 'Next Hint' : 'Hide Hint'}
           </button>
+          
           <button 
             onClick={() => setIsModalOpen(true)}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold shadow-md transition-all active:scale-95 flex items-center gap-2"
@@ -90,24 +130,17 @@ const App: React.FC = () => {
 
              {/* Hint 1: Solid (Arrangement A) */}
              <g className={`transition-opacity duration-500 ${hintMode === HintMode.SOLID ? 'opacity-40' : 'opacity-0'}`}>
-                {/* Red Triangle */}
                 <path d="M40,320 L360,320 L40,200 Z" fill="none" stroke="red" strokeWidth="3" />
-                {/* Blue Triangle */}
                 <path d="M360,200 L560,200 L360,120 Z" fill="none" stroke="blue" strokeWidth="3" />
-                {/* Rect Block area */}
                 <rect x="360" y="200" width="200" height="120" fill="none" stroke="green" strokeWidth="2" strokeDasharray="4,4" />
                 <text x="200" y="160" fill="black" fontWeight="bold" fontSize="24">Form 1: The "Straight" Triangle</text>
              </g>
 
              {/* Hint 2: Hole (Arrangement B) */}
              <g className={`transition-opacity duration-500 ${hintMode === HintMode.HOLE ? 'opacity-40' : 'opacity-0'}`}>
-                {/* Blue Triangle */}
                 <path d="M40,320 L240,320 L40,240 Z" fill="none" stroke="blue" strokeWidth="3" />
-                {/* Red Triangle */}
                 <path d="M240,240 L560,240 L240,120 Z" fill="none" stroke="red" strokeWidth="3" />
-                {/* Rect Block area */}
                 <rect x="240" y="240" width="320" height="80" fill="none" stroke="green" strokeWidth="2" strokeDasharray="4,4" />
-                {/* The Hole */}
                 <rect x="360" y="240" width="40" height="40" fill="#ef4444" opacity="0.8" />
                 <text x="200" y="80" fill="#ef4444" fontWeight="bold" fontSize="24">Form 2: The Mystery Hole</text>
              </g>
@@ -143,9 +176,9 @@ const App: React.FC = () => {
               <span className="font-bold text-indigo-600">02</span>
               <span>Swap the positions of the <span className="font-semibold text-red-500">Red</span> and <span className="font-semibold text-blue-600">Blue</span> triangles. Fit the other pieces. Where did the hole come from?</span>
             </li>
-            <li className="flex gap-3 italic">
-              <span className="font-bold text-slate-400">TIP</span>
-              <span>No rotation needed. Simply drag and drop to snap to the grid!</span>
+            <li className="flex gap-3 italic text-xs">
+              <span className="font-bold text-slate-400">NOTE</span>
+              <span>For the AI secret to work properly, ensure you have selected a paid API key from your project. <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="underline text-indigo-500">Learn more about billing.</a></span>
             </li>
           </ul>
         </div>
